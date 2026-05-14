@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Hospital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(-45deg, #e0f2fe, #f0f9ff, #bae6fd, #7dd3fc);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .login-card {
+            animation: card-animation 0.7s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes card-animation {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="gradient-bg flex items-center justify-center min-h-screen relative p-4 overflow-hidden">
+
+    <!-- Time and Date Widget (Fixed positioning to prevent overflow issues) -->
+    <div
+        class="fixed top-4 right-4 z-50 bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-lg text-center max-w-[90vw] overflow-hidden">
+        <p id="time-widget" class="font-bold text-gray-800 text-lg whitespace-nowrap"></p>
+        <p id="date-widget" class="text-xs text-gray-500 whitespace-nowrap"></p>
+    </div>
+
+    <!-- Main container for the login card -->
+    <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-8 m-4 login-card relative z-10">
+        <div class="text-center">
+            <!-- Clinic Logo -->
+            <div class="mx-auto flex items-center justify-center h-24 w-24 mb-4">
+                <img src="icon.png" alt="Your hospital logo" class="h-full w-full object-contain"
+                    onerror="this.onerror=null;this.src='https://placehold.co/96x96/f0f9ff/0284c7?text=Logo';">
+            </div>
+
+            <!-- Clinic Name -->
+            <h1 class="text-3xl font-bold text-gray-800">Your</h1>
+            <h2 class="text-xl font-medium text-sky-700 mb-2">Hospital</h2>
+            <p class="text-gray-500 mb-8">Welcome! Please select your login type.</p>
+        </div>
+
+        <!-- Login Buttons -->
+        <div class="space-y-4">
+            <!-- Reception Login Button -->
+            <button onclick="window.location.href='reception.html'"
+                class="w-full flex items-center justify-center bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-sky-300">
+                <svg class="w-6 h-6 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Reception Login</span>
+            </button>
+
+            <!-- Doctor Login Button -->
+            <button onclick="window.location.href='doctor.html'"
+                class="w-full flex items-center justify-center bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
+                <svg class="w-6 h-6 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Doctor Login</span>
+            </button>
+
+            <!-- Admin Login Button -->
+            <button onclick="window.location.href='admin.html'"
+                class="w-full flex items-center justify-center bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
+                <svg class="w-6 h-6 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Admin Login</span>
+            </button>
+
+
+            <!-- Footer -->
+            <div class="text-center mt-8">
+                <p id="footer-text" class="text-xs text-gray-400"></p>
+            </div>
+        </div>
+
+        <script>
+            // --- Time and Date Widget Script ---
+            const timeEl = document.getElementById('time-widget');
+            const dateEl = document.getElementById('date-widget');
+
+            function updateTime() {
+                const now = new Date();
+
+                // Format time to show hours, minutes, and seconds with AM/PM
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+
+                // Format date to be readable
+                const dateString = now.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                timeEl.textContent = timeString;
+                dateEl.textContent = dateString;
+            }
+
+            // --- Footer Script ---
+            const footerText = document.getElementById('footer-text');
+            const currentYear = new Date().getFullYear();
+            footerText.innerHTML = `&copy; ${currentYear} Your hospital`;
+
+            // Update the time every second
+            setInterval(updateTime, 1000);
+
+            // Initial call to display time immediately on load
+            updateTime();
+        </script>
+</body>
+
+</html>
