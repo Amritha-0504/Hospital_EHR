@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Hospital - Doctor's Desk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #patient-list .selected, #on-hold-patient-list .selected {
+            background-color: #DBEAFE; border-left-width: 4px; border-color: #3B82F6;
+        }
+        .dropdown:hover .dropdown-menu { display: block; }
+        @media print {
+            @page { size: A4; margin: 0.75in; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body * { visibility: hidden; }
+            #print-output, #print-output * { visibility: visible; }
+            #print-output { position: absolute; left: 0; top: 0; width: 100%; height: 98%; display: flex; flex-direction: column; }
+            #print-main-content { flex-grow: 1; }
+            #print-footer { margin-top: auto; padding-top: 1rem; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Main App Screen -->
+    <div id="app-screen" class="h-screen flex flex-col">
+        <div class="flex h-full">
+            <!-- Sidebar -->
+            <aside class="w-1/4 bg-white border-r flex flex-col no-print">
+                <div class="flex-grow overflow-y-auto">
+                    <div class="p-4 border-b"><h2 class="text-xl font-bold text-gray-800">Patient Records</h2></div>
+                    <div id="patient-list"><p id="patient-list-placeholder" class="text-center text-gray-500 p-8">Loading patients...</p></div>
+                    <div class="p-4 border-t border-b"><h2 class="text-xl font-bold text-gray-800">On Hold</h2></div>
+                    <div id="on-hold-patient-list"><p id="on-hold-patient-list-placeholder" class="text-center text-gray-500 p-8">No patients on hold.</p></div>
+                </div>
+                <div class="p-4 border-t space-y-2">
+                    <button id="newPatientBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">+ New Walk-in Patient</button>
+                    <button id="show-collection-button" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition">Show Collection</button>
+                    <button id="view-repeat-patients-button" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition">Search Past Patients</button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="w-3/4 overflow-y-auto">
+                <div id="app-container" class="p-4 md:p-8">
+                    <!-- Header -->
+                    <header class="bg-white p-6 rounded-lg shadow-md mb-8 relative">
+                        <div class="absolute top-4 left-6 text-xs text-gray-500"><p>Regd. No. : GOV-2024-001</p></div>
+                        <div class="flex items-center justify-start mt-4">
+                            <i class="fas fa-user-md text-6xl text-blue-800 mr-6 ml-4"></i>
+                            <div class="text-center flex-grow">
+                                <h1 class="text-4xl font-bold text-blue-800">Your Hospital</h1>
+                                <p class="text-sm text-gray-600">General Healthcare & Specialist Centre</p>
+                                <div class="mt-4 text-gray-700">
+                                    <p>123 Health Avenue, Medical District, City Center</p>
+                                    <p>Mob.: +91 9876543210 | Email: contact@yourhospital.com</p>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Patient Details -->
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Patient Details</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700">Name</label>
+                                <input type="text" id="patientName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Age</label>
+                                <input type="number" id="patientAge" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Sex</label>
+                                <input id="patientSex" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">ID</label>
+                                <input type="text" id="patientId" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                <input type="text" id="patientPhone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700">Date</label>
+                                <input type="text" id="reportDate" readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100">
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="block text-sm font-medium text-gray-700">Address</label>
+                                <input type="text" id="patientAddress" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Form -->
+                    <div id="main-form-sections" class="hidden">
+                        
+                        <!-- Complaints & History -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                            <div class="bg-white p-6 rounded-lg shadow-md">
+                                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Chief Complaints</h2>
+                                <div id="complaints-container" class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2"></div>
+                                <div class="flex gap-2 mt-2">
+                                    <input type="text" id="complaints-other" placeholder="Add other..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                    <button id="add-complaint-btn" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm">Add</button>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md">
+                                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Past History / Comorbidities</h2>
+                                <div id="history-container" class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2"></div>
+                                <div class="flex gap-2 mt-2">
+                                    <input type="text" id="history-other" placeholder="Add other..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                    <button id="add-history-btn" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm">Add</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- General Examination (Vitals) -->
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">General Examination & Vitals</h2>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">BP (mmHg)</label>
+                                    <input type="text" id="vital-bp" placeholder="e.g. 120/80" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Pulse (bpm)</label>
+                                    <input type="text" id="vital-pulse" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Temp (°F)</label>
+                                    <input type="text" id="vital-temp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">SpO2 (%)</label>
+                                    <input type="text" id="vital-spo2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                                    <input type="text" id="vital-weight" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Systemic Examination / Notes</label>
+                                <textarea id="vital-notes" rows="2" placeholder="CVS, CNS, RS, P/A findings..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Diagnosis -->
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Provisional Diagnosis</h2>
+                            <div id="diagnosis-container" class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2"></div>
+                            <div id="selected-diagnosis-container" class="space-y-2 mt-2"></div>
+                            <div class="flex gap-2 mt-4">
+                                <input type="text" id="diagnosis-other" placeholder="Add custom diagnosis..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                                <button id="add-diagnosis-btn" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm">Add</button>
+                            </div>
+                        </div>
+
+                        <!-- Rx Section -->
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                            <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Rx (Prescription)</h2>
+                            <div class="relative">
+                                <input type="text" id="medicineSearch" placeholder="Search medicines..." class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <div id="medicineResults" class="hidden absolute w-full bg-white border mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto z-20"></div>
+                            </div>
+                            <div id="selectedMedicines" class="mt-4 space-y-3"></div>
+                            
+                            <div class="mt-6 pt-4 border-t">
+                                <label class="block text-sm font-medium text-gray-700">Advice / Instructions</label>
+                                <div class="flex gap-2 mt-1">
+                                    <select id="adviceValue" class="block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <input type="text" id="adviceOtherText" placeholder="Specify other advice" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm hidden">
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t">
+                                <label class="block text-sm font-medium text-gray-700">Pathological Tests</label>
+                                <div class="relative">
+                                    <input type="text" id="pathologicalTestSearch" placeholder="Search tests..." class="w-full rounded-md border-gray-300 shadow-sm">
+                                    <div id="pathologicalTestResults" class="hidden absolute w-full bg-white border mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto z-20"></div>
+                                </div>
+                                <div id="selectedPathologicalTests" class="mt-4 space-y-2"></div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t">
+                                <label for="reviewAfter" class="block text-sm font-medium">Review After (Days)</label>
+                                <input type="number" id="reviewAfter" class="mt-1 block w-full md:w-1/3 rounded-md border-gray-300 shadow-sm">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="text-center flex justify-center gap-4">
+                            <button id="holdButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition">Put on Hold</button>
+                            <button id="printButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition">Generate & Print Report</button>
+                        </div>
+                        <p id="form-message" class="text-center text-sm mt-4 hidden"></p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals (Collection, Repeat, Delete) -->
+    <!-- Collection Options Modal -->
+    <div id="collection-options-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold mb-6">Show Collection</h2>
+            <div class="space-y-4">
+                <button id="show-today-collection-btn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition">Show Today's Collection</button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Or Choose a Date:</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="date" id="collection-date-picker" class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <button id="show-specific-date-collection-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">Show</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-right"><button id="close-collection-options-modal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Close</button></div>
+        </div>
+    </div>
+    <!-- Collection Result Modal -->
+    <div id="collection-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm text-center">
+            <h2 id="collection-modal-title" class="text-2xl font-bold mb-4">Today's Collection</h2>
+            <p class="text-4xl font-bold text-green-600 mb-6">₹<span id="collection-total">0</span></p>
+            <button id="close-collection-modal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Close</button>
+        </div>
+    </div>
+    <!-- Repeat Patients Modal -->
+    <div id="repeat-patients-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-full flex flex-col">
+            <h2 class="text-2xl font-bold mb-4">Search Past Patients</h2>
+            <div class="mb-4 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Search by Name or Phone:</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="text" id="repeat-patient-search" placeholder="Enter name..." class="block w-full rounded-md border-gray-300 shadow-sm">
+                        <button id="search-repeat-patient-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">Search</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Search by Date:</label>
+                    <input type="date" id="repeat-patient-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+            </div>
+            <div id="repeat-patients-list" class="flex-grow overflow-y-auto border-t pt-4"><p class="text-center text-gray-500">Enter search term.</p></div>
+            <div class="mt-6 text-right"><button id="close-repeat-patients-modal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Close</button></div>
+        </div>
+    </div>
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm text-center">
+            <h2 class="text-xl font-bold mb-4">Confirm Deletion</h2>
+            <p class="text-gray-700 mb-6">Are you sure? This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button id="cancel-delete-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button id="confirm-delete-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Output -->
+    <div id="print-output" class="hidden p-8 bg-white">
+        <div id="print-main-content">
+            <div class="relative mb-6 border-b-2 border-black pb-4">
+                 <div class="absolute top-0 left-0 text-xs"><p>Regd. No. : GOV-2024-001</p></div>
+                <div class="flex items-center justify-start mt-4 ml-4">
+                    <img src="icon.png" alt="Logo" class="h-24 w-24 mr-6" onerror="this.onerror=null;this.src='https://placehold.co/112x112/CCCCCC/FFFFFF?text=Logo';">
+                    <div class="text-center flex-grow">
+                        <h1 class="text-4xl font-bold text-black">Your Hospital</h1>
+                        <p class="text-sm">General Healthcare & Specialist Centre</p>
+                        <div class="mt-2 text-sm">
+                            <p>123 Health Avenue, Medical District, City Center</p>
+                            <p>Mob.: +91 9876543210 | Email: contact@yourhospital.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-4 text-sm border-b border-gray-300 pb-2">
+                <div class="flex justify-between items-center mb-2">
+                    <div><strong>Name:</strong> <span id="p-name"></span></div>
+                    <div><strong>Age/Sex:</strong> <span id="p-age-sex"></span></div>
+                    <div><strong>ID:</strong> <span id="p-id"></span></div>
+                    <div><strong>Date:</strong> <span id="p-date"></span></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="text-left"><strong>Address:</strong> <span id="p-address"></span></div>
+                    <div><strong>Phone:</strong> <span id="p-phone"></span></div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6 mb-4 text-sm border-b border-gray-300 pb-2">
+                <div><strong>Complaints:</strong> <span id="p-complaints" class="block mt-1"></span></div>
+                <div><strong>History:</strong> <span id="p-history" class="block mt-1"></span></div>
+            </div>
+            
+            <div class="mb-4 text-sm border-b border-gray-300 pb-2">
+                <h3 class="font-bold text-lg mb-2">Vitals & Examination</h3>
+                <div class="grid grid-cols-5 gap-2 mb-2">
+                    <div><strong>BP:</strong> <span id="p-bp"></span></div>
+                    <div><strong>Pulse:</strong> <span id="p-pulse"></span></div>
+                    <div><strong>Temp:</strong> <span id="p-temp"></span></div>
+                    <div><strong>SpO2:</strong> <span id="p-spo2"></span></div>
+                    <div><strong>Wt:</strong> <span id="p-weight"></span></div>
+                </div>
+                <div><strong>Notes:</strong> <span id="p-notes"></span></div>
+            </div>
+
+            <div class="mb-4"><h3 class="font-bold text-lg mb-2 border-b border-gray-400 pb-1">DIAGNOSIS</h3><p id="p-diagnosis" class="text-sm font-medium"></p></div>
+            
+            <div class="mb-4">
+                <h3 class="font-bold text-lg mb-2 border-b border-gray-400 pb-1">Rx</h3>
+                <div id="p-medicines" class="text-sm space-y-2"></div>
+                <p class="text-sm mt-4"><strong>Advice:</strong> <span id="p-advice"></span></p>
+                <p id="p-pathological-tests-section" class="text-sm mt-2"><strong>Tests:</strong> <span id="p-pathological-tests"></span></p>
+            </div>
+        </div>
+        
+        <div id="print-footer" class="text-xs">
+            <hr class="border-black mb-2">
+            <p id="p-footer-note" class="text-center text-gray-500"></p>
+        </div>
+        
+        <div class="no-print fixed bottom-4 right-4 flex gap-2">
+            <button id="editButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg">Edit</button>
+            <button id="reprintButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg">Print</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc, setDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBeh9jhQpuohMxYe5bNRXgFrKMQlZjKg7U",
+            authDomain: "ehr-987e7.firebaseapp.com",
+            projectId: "ehr-987e7",
+            storageBucket: "ehr-987e7.firebasestorage.app",
+            messagingSenderId: "1050686164006",
+            appId: "1:1050686164006:web:98d7ded90368f7e828eae7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        signInAnonymously(auth).catch((error) => {
+            console.error("Anonymous authentication failed:", error);
+            if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
+                alert("Setup Required: Enable 'Anonymous' Sign-in in Firebase Console");
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+
+            // Global State
+            let currentPatientId = null;
+            let currentPatientData = null;
+            let currentPatientOriginalCollection = null;
+            let selectedMedicines = [];
+            let selectedPathologicalTests = [];
+            let patientToDelete = { id: null, collection: null };
+            let allMedicines = [];
+            let allPathologicalTests = [];
+            let selectedOtherDiagnoses = [];
+            let lastSearchTerm = null;
+            let lastSearchDate = null;
+
+            // DOM Elements
+            const appScreen = document.getElementById('app-screen');
+            const patientList = document.getElementById('patient-list');
+            const patientListPlaceholder = document.getElementById('patient-list-placeholder');
+            const onHoldPatientList = document.getElementById('on-hold-patient-list');
+            const onHoldPatientListPlaceholder = document.getElementById('on-hold-patient-list-placeholder');
+            const mainFormSections = document.getElementById('main-form-sections');
+            
+            // Inputs
+            const patientNameInput = document.getElementById('patientName');
+            const patientAgeInput = document.getElementById('patientAge');
+            const patientSexInput = document.getElementById('patientSex');
+            const patientIdInput = document.getElementById('patientId');
+            const patientPhoneInput = document.getElementById('patientPhone');
+            const patientAddressInput = document.getElementById('patientAddress');
+            
+            // Buttons & Logic Areas
+            const newPatientBtn = document.getElementById('newPatientBtn');
+            const holdButton = document.getElementById('holdButton');
+            const printButton = document.getElementById('printButton');
+            const formMessage = document.getElementById('form-message');
+            
+            const complaintsContainer = document.getElementById('complaints-container');
+            const historyContainer = document.getElementById('history-container');
+            const diagnosisContainer = document.getElementById('diagnosis-container');
+            const selectedDiagnosisContainer = document.getElementById('selected-diagnosis-container');
+            
+            const adviceValueSelect = document.getElementById('adviceValue');
+            const adviceOtherText = document.getElementById('adviceOtherText');
+            
+            // Search & Result Areas
+            const medicineSearch = document.getElementById('medicineSearch');
+            const medicineResults = document.getElementById('medicineResults');
+            const selectedMedicinesContainer = document.getElementById('selectedMedicines');
+            const pathologicalTestSearch = document.getElementById('pathologicalTestSearch');
+            const pathologicalTestResults = document.getElementById('pathologicalTestResults');
+            const selectedPathologicalTestsContainer = document.getElementById('selectedPathologicalTests');
+
+            // Data Options for General Practice
+            const complaintsOptions = ['Fever', 'Cough', 'Cold/Coryza', 'Headache', 'Abdominal Pain', 'Vomiting', 'Loose Motion', 'Body Ache', 'Weakness', 'Throat Pain', 'Breathlessness', 'Dizziness', 'Loss of Appetite', 'Burning Micturition', 'Joint Pain', 'Backache', 'Acidity/Heartburn'];
+            const historyOptions = ['Hypertension', 'Diabetes Mellitus', 'Asthma', 'Tuberculosis', 'Thyroid Disorder', 'Jaundice', 'Seizures', 'Drug Allergy', 'Previous Surgery', 'Smoker', 'Alcoholic'];
+            const diagnosisOptions = ['Viral Fever', 'Upper Respiratory Tract Infection (URTI)', 'Acute Gastroenteritis', 'Essential Hypertension', 'Type 2 Diabetes Mellitus', 'Acid Peptic Disease (APD)', 'Migraine', 'Anemia', 'Urinary Tract Infection (UTI)', 'Bronchitis', 'Typhoid', 'Malaria', 'Dengue', 'Tonsillitis', 'Allergic Rhinitis', 'Osteoarthritis'];
+            const adviceOptions = ['Take medicines as prescribed', 'Drink plenty of water', 'Rest for few days', 'Avoid oily/spicy food', 'Salt restricted diet', 'Sugar restricted diet', 'Review after 3 days', 'Review after 1 week', 'Review SOS', 'Referred to higher center', 'Other'];
+            
+            const initialMedicines = [
+                { name: "Paracetamol" }, { name: "Ibuprofen" }, { name: "Diclofenac" }, { name: "Naproxen" }, { name: "Aspirin" }, { name: "Tramadol" },
+                { name: "Amoxicillin" }, { name: "Amoxicillin–Clavulanate" }, { name: "Azithromycin" }, { name: "Cefixime" }, { name: "Ceftriaxone" },
+                { name: "Ciprofloxacin" }, { name: "Levofloxacin" }, { name: "Doxycycline" }, { name: "Metronidazole" }, { name: "Tinidazole" },
+                { name: "Pantoprazole" }, { name: "Omeprazole" }, { name: "Rabeprazole" }, { name: "Esomeprazole" }, { name: "Famotidine" }, { name: "Ranitidine" },
+                { name: "Domperidone" }, { name: "Metoclopramide" }, { name: "Ondansetron" }, { name: "Loperamide" }, { name: "Lactulose" }, { name: "Bisacodyl" },
+                { name: "Isabgol" }, { name: "Cetirizine" }, { name: "Levocetirizine" }, { name: "Loratadine" }, { name: "Fexofenadine" }, { name: "Montelukast" },
+                { name: "Salbutamol" }, { name: "Budesonide" }, { name: "Amlodipine" }, { name: "Atenolol" }, { name: "Metoprolol" }, { name: "Telmisartan" },
+                { name: "Losartan" }, { name: "Enalapril" }, { name: "Metformin" }, { name: "Glimepiride" }, { name: "Atorvastatin" }, { name: "Multivitamin" }, { name: "Calcium + Vit D3" }
+            ];
+            
+            const initialPathologicalTests = ['CBC', 'Widal', 'Malaria Parasite (MP)', 'Dengue NS1/IgM', 'Urine Routine', 'RBS', 'FBS/PPBS', 'HbA1c', 'Lipid Profile', 'LFT', 'KFT', 'TFT', 'Serum Electrolytes', 'USG Abdomen', 'Chest X-Ray', 'ECG'];
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    setupUI();
+                    listenToPatients();
+                    listenToOnHoldPatients();
+                }
+            });
+
+            // --- LISTENERS ---
+            const listenToPatients = () => {
+                const q = collection(db, "patients");
+                onSnapshot(q, (snapshot) => {
+                    patientList.innerHTML = '';
+                    if (snapshot.empty) {
+                        patientListPlaceholder.classList.remove('hidden');
+                    } else {
+                        patientListPlaceholder.classList.add('hidden');
+                        const patients = [];
+                        snapshot.forEach(doc => patients.push({ id: doc.id, ...doc.data() }));
+                        patients.sort((a, b) => (a.createdAt?.toDate() || 0) - (b.createdAt?.toDate() || 0));
+                        
+                        patients.forEach((patient, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'p-4 border-b cursor-pointer hover:bg-gray-50';
+                            div.dataset.id = patient.id;
+                            const time = patient.createdAt?.toDate().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'}) || '';
+                            div.innerHTML = `<div class="flex justify-between font-semibold"><span>${index+1}. ${patient.name}</span><span class="text-xs text-gray-500">${time}</span></div><p class="text-sm text-gray-500">Age: ${patient.age}, Sex: ${patient.sex}</p>`;
+                            div.onclick = () => selectPatient(patient.id, patient, 'patients');
+                            patientList.appendChild(div);
+                        });
+                    }
+                });
+            };
+
+            const listenToOnHoldPatients = () => {
+                const q = collection(db, "on_hold_patients");
+                onSnapshot(q, (snapshot) => {
+                    onHoldPatientList.innerHTML = '';
+                    if (snapshot.empty) {
+                        onHoldPatientListPlaceholder.classList.remove('hidden');
+                    } else {
+                        onHoldPatientListPlaceholder.classList.add('hidden');
+                        const patients = [];
+                        snapshot.forEach(doc => patients.push({ id: doc.id, ...doc.data() }));
+                        patients.forEach(patient => {
+                            const div = document.createElement('div');
+                            div.className = 'p-4 border-b flex justify-between items-center hover:bg-gray-50';
+                            div.innerHTML = `<div class="cursor-pointer flex-grow"><p class="font-semibold">${patient.name}</p><p class="text-sm text-gray-500">${patient.age} / ${patient.sex}</p></div><button class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">&times;</button>`;
+                            div.querySelector('div').onclick = () => selectPatient(patient.id, patient, 'on_hold_patients');
+                            div.querySelector('button').onclick = (e) => { e.stopPropagation(); promptForDelete(patient.id, 'on_hold_patients'); };
+                            onHoldPatientList.appendChild(div);
+                        });
+                    }
+                });
+            };
+
+            // --- UI LOGIC ---
+            const selectPatient = (id, data, collectionName) => {
+                resetForm();
+                currentPatientId = id;
+                currentPatientData = data;
+                currentPatientOriginalCollection = collectionName;
+                
+                document.querySelectorAll('#patient-list > div, #on-hold-patient-list > div').forEach(d => d.classList.remove('selected'));
+                if(collectionName === 'patients') document.querySelector(`#patient-list div[data-id='${id}']`)?.classList.add('selected');
+                
+                populateForm(data);
+                mainFormSections.classList.remove('hidden');
+            };
+
+            const resetForm = () => {
+                const inputs = document.querySelectorAll('#app-container input, #app-container textarea, #app-container select');
+                inputs.forEach(i => { if(i.type !== 'button') i.value = ''; if(i.type === 'checkbox') i.checked = false; });
+                document.getElementById('reportDate').value = new Date().toLocaleDateString('en-GB');
+                selectedMedicines = []; selectedPathologicalTests = []; selectedOtherDiagnoses = [];
+                renderSelectedMedicines(); renderSelectedPathologicalTests(); renderOtherDiagnoses();
+                formMessage.classList.add('hidden');
+            };
+
+            const populateForm = (data) => {
+                patientNameInput.value = data.name || '';
+                patientAgeInput.value = data.age || '';
+                patientSexInput.value = data.sex || '';
+                patientIdInput.value = data.patientId || '';
+                patientPhoneInput.value = data.phone || '';
+                patientAddressInput.value = data.address || '';
+                
+                // Populate Checkboxes
+                const checkBoxes = (container, items) => {
+                    if(!items) return;
+                    items.forEach(item => {
+                        const cb = container.querySelector(`input[value="${item}"]`);
+                        if(cb) cb.checked = true;
+                        else createCheckbox(container, item, container.id.split('-')[0]);
+                    });
+                };
+                checkBoxes(complaintsContainer, data.complaints);
+                checkBoxes(historyContainer, data.history);
+                checkBoxes(diagnosisContainer, data.diagnosis);
+                
+                // Vitals
+                document.getElementById('vital-bp').value = data.vitals?.bp || '';
+                document.getElementById('vital-pulse').value = data.vitals?.pulse || '';
+                document.getElementById('vital-temp').value = data.vitals?.temp || '';
+                document.getElementById('vital-weight').value = data.vitals?.weight || '';
+                document.getElementById('vital-spo2').value = data.vitals?.spo2 || '';
+                document.getElementById('vital-notes').value = data.vitals?.notes || '';
+                
+                // Other Diagnoses
+                if(data.otherDiagnoses) {
+                    selectedOtherDiagnoses = data.otherDiagnoses;
+                    renderOtherDiagnoses();
+                }
+
+                // Medicines & Tests
+                if(data.medicines) { selectedMedicines = data.medicines; renderSelectedMedicines(); }
+                if(data.pathologicalTests) { selectedPathologicalTests = data.pathologicalTests; renderSelectedPathologicalTests(); }
+                
+                // Advice
+                if(data.advice) {
+                    if(Array.from(adviceValueSelect.options).some(o => o.value === data.advice)) {
+                        adviceValueSelect.value = data.advice;
+                    } else {
+                        adviceValueSelect.value = 'Other';
+                        adviceOtherText.classList.remove('hidden');
+                        adviceOtherText.value = data.advice;
+                    }
+                }
+                document.getElementById('reviewAfter').value = data.reviewAfter || '';
+            };
+
+            // --- FORM HELPERS ---
+            const createCheckbox = (container, labelText, type) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2';
+                const id = `${type}-${labelText.replace(/\s+/g, '')}`;
+                div.innerHTML = `<input type="checkbox" id="${id}" value="${labelText}" class="h-4 w-4 rounded border-gray-300 text-blue-600"><label for="${id}" class="text-sm text-gray-900">${labelText}</label>`;
+                if(container.id === 'diagnosis-container' || container.id === 'complaints-container' || container.id === 'history-container') {
+                     // Check if it was manually added (has delete button logic needed? For simplicity, dynamic ones added via "Other" input get delete buttons)
+                     // But this function is for predefined list mainly.
+                }
+                container.appendChild(div);
+                return div.querySelector('input');
+            };
+
+            const addCustomItem = (input, container, type) => {
+                const val = input.value.trim();
+                if(val) {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between';
+                    div.innerHTML = `<div class="flex items-center space-x-2"><input type="checkbox" value="${val}" checked class="h-4 w-4 rounded border-gray-300 text-blue-600"><label class="text-sm text-gray-900">${val}</label></div><button class="text-red-500 font-bold">&times;</button>`;
+                    div.querySelector('button').onclick = () => div.remove();
+                    container.appendChild(div);
+                    input.value = '';
+                }
+            };
+            
+            // --- DIAGNOSIS LOGIC ---
+            const renderOtherDiagnoses = () => {
+                selectedDiagnosisContainer.innerHTML = '';
+                selectedOtherDiagnoses.forEach((d, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between bg-gray-100 p-2 rounded';
+                    div.innerHTML = `<span>${d}</span><button class="text-red-500 font-bold">&times;</button>`;
+                    div.querySelector('button').onclick = () => { selectedOtherDiagnoses.splice(i, 1); renderOtherDiagnoses(); };
+                    selectedDiagnosisContainer.appendChild(div);
+                });
+            };
+
+            // --- MEDICINES LOGIC ---
+            const renderSelectedMedicines = () => {
+                selectedMedicinesContainer.innerHTML = '';
+                const instructions = ["1-0-1", "1-0-0", "0-0-1", "1-1-1", "SOS", "Once Daily", "Twice Daily", "Thrice Daily", "Before Food", "After Food"];
+                selectedMedicines.forEach((med, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 border rounded bg-gray-50';
+                    div.innerHTML = `
+                        <div class="flex justify-between font-semibold"><span>${med.name}</span><button class="text-red-500">&times;</button></div>
+                        <div class="flex gap-2 mt-2">
+                            <select class="border rounded p-1 text-sm flex-grow">${['Select Dose...', ...instructions].map(opt => `<option value="${opt}" ${med.instruction === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>
+                            <input type="text" placeholder="Days" value="${med.days || ''}" class="border rounded p-1 w-20 text-sm">
+                        </div>
+                    `;
+                    div.querySelector('button').onclick = () => { selectedMedicines.splice(i, 1); renderSelectedMedicines(); };
+                    div.querySelector('select').onchange = (e) => selectedMedicines[i].instruction = e.target.value;
+                    div.querySelector('input').oninput = (e) => selectedMedicines[i].days = e.target.value;
+                    selectedMedicinesContainer.appendChild(div);
+                });
+            };
+
+            const addMedicine = (name) => {
+                if(!selectedMedicines.some(m => m.name === name)) {
+                    selectedMedicines.push({name, instruction: '', days: ''});
+                    renderSelectedMedicines();
+                }
+                medicineSearch.value = '';
+                medicineResults.classList.add('hidden');
+            };
+
+            // --- SETUP UI ---
+            const setupUI = async () => {
+                document.getElementById('reportDate').value = new Date().toLocaleDateString('en-GB');
+                
+                complaintsOptions.forEach(c => createCheckbox(complaintsContainer, c, 'complaints'));
+                historyOptions.forEach(h => createCheckbox(historyContainer, h, 'history'));
+                diagnosisOptions.forEach(d => createCheckbox(diagnosisContainer, d, 'diagnosis'));
+                
+                adviceOptions.forEach(a => { const opt = document.createElement('option'); opt.value = a; opt.innerText = a; adviceValueSelect.appendChild(opt); });
+                
+                const dbMeds = await fetchCollection('new_medicines');
+                // Added filter to remove items without valid names, preventing localeCompare errors
+                allMedicines = [...initialMedicines, ...dbMeds]
+                    .filter(m => m && m.name)
+                    .sort((a,b)=>a.name.localeCompare(b.name));
+                
+                const dbTests = await fetchCollection('new_tests');
+                // Added filter here as well
+                allPathologicalTests = [...initialPathologicalTests.map(n => ({name:n})), ...dbTests]
+                    .filter(t => t && t.name)
+                    .sort((a,b)=>a.name.localeCompare(b.name));
+                
+                // Event Listeners for dynamic inputs
+                document.getElementById('add-complaint-btn').onclick = () => addCustomItem(document.getElementById('complaints-other'), complaintsContainer, 'complaints');
+                document.getElementById('add-history-btn').onclick = () => addCustomItem(document.getElementById('history-other'), historyContainer, 'history');
+                document.getElementById('add-diagnosis-btn').onclick = () => {
+                    const val = document.getElementById('diagnosis-other').value.trim();
+                    if(val) { selectedOtherDiagnoses.push(val); renderOtherDiagnoses(); document.getElementById('diagnosis-other').value = ''; }
+                };
+                
+                adviceValueSelect.onchange = (e) => {
+                    document.getElementById('adviceOtherText').classList.toggle('hidden', e.target.value !== 'Other');
+                };
+                
+                // Search Listeners
+                setupSearch(medicineSearch, medicineResults, allMedicines, addMedicine, 'new_medicines');
+                setupSearch(pathologicalTestSearch, pathologicalTestResults, allPathologicalTests, (name) => {
+                    if(!selectedPathologicalTests.includes(name)) { selectedPathologicalTests.push(name); renderSelectedPathologicalTests(); }
+                    pathologicalTestSearch.value = ''; pathologicalTestResults.classList.add('hidden');
+                }, 'new_tests');
+            };
+
+            const setupSearch = (input, resultsDiv, sourceArray, selectCallback, firebaseCollection) => {
+                input.oninput = (e) => {
+                    const term = e.target.value.toLowerCase();
+                    resultsDiv.innerHTML = '';
+                    if(!term) { resultsDiv.classList.add('hidden'); return; }
+                    resultsDiv.classList.remove('hidden');
+                    
+                    const matches = sourceArray.filter(i => i.name.toLowerCase().includes(term));
+                    matches.forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+                        div.innerText = m.name;
+                        div.onclick = () => selectCallback(m.name);
+                        resultsDiv.appendChild(div);
+                    });
+                    
+                    if(!matches.some(m => m.name.toLowerCase() === term)) {
+                        const addDiv = document.createElement('div');
+                        addDiv.className = 'p-2 text-blue-600 hover:bg-blue-50 cursor-pointer';
+                        addDiv.innerText = `+ Add "${e.target.value}"`;
+                        addDiv.onclick = async () => {
+                            const newName = e.target.value;
+                            await addDoc(collection(db, firebaseCollection), {name: newName});
+                            sourceArray.push({name: newName});
+                            selectCallback(newName);
+                        };
+                        resultsDiv.appendChild(addDiv);
+                    }
+                };
+                document.addEventListener('click', (e) => { if(!input.parentElement.contains(e.target)) resultsDiv.classList.add('hidden'); });
+            };
+
+            const renderSelectedPathologicalTests = () => {
+                selectedPathologicalTestsContainer.innerHTML = '';
+                selectedPathologicalTests.forEach((t, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between bg-gray-100 p-2 rounded';
+                    div.innerHTML = `<span>${t}</span><button class="text-red-500">&times;</button>`;
+                    div.querySelector('button').onclick = () => { selectedPathologicalTests.splice(i, 1); renderSelectedPathologicalTests(); };
+                    selectedPathologicalTestsContainer.appendChild(div);
+                });
+            };
+
+            const fetchCollection = async (name) => {
+                const snap = await getDocs(collection(db, name));
+                const items = []; snap.forEach(d => items.push({id: d.id, ...d.data()}));
+                return items;
+            };
+
+            // --- ACTIONS (Print, Hold, Etc) ---
+            printButton.onclick = async () => {
+                const data = getFormData();
+                if(!data.name) return alert("Patient Name Required");
+                
+                data.checkedOutAt = new Date();
+                try {
+                    await addDoc(collection(db, "checked_out_patients"), data);
+                    if(currentPatientId && currentPatientOriginalCollection) await deleteDoc(doc(db, currentPatientOriginalCollection, currentPatientId));
+                    
+                    // Fill Print View
+                    document.getElementById('p-name').innerText = data.name;
+                    document.getElementById('p-age-sex').innerText = `${data.age}/${data.sex}`;
+                    document.getElementById('p-date').innerText = data.date;
+                    document.getElementById('p-id').innerText = data.patientId || '-';
+                    document.getElementById('p-phone').innerText = data.phone || '-';
+                    document.getElementById('p-address').innerText = data.address || '-';
+                    
+                    document.getElementById('p-complaints').innerText = data.complaints?.join(', ') || '-';
+                    document.getElementById('p-history').innerText = data.history?.join(', ') || '-';
+                    
+                    document.getElementById('p-bp').innerText = data.vitals?.bp || '-';
+                    document.getElementById('p-pulse').innerText = data.vitals?.pulse || '-';
+                    document.getElementById('p-temp').innerText = data.vitals?.temp || '-';
+                    document.getElementById('p-spo2').innerText = data.vitals?.spo2 || '-';
+                    document.getElementById('p-weight').innerText = data.vitals?.weight || '-';
+                    document.getElementById('p-notes').innerText = data.vitals?.notes || '-';
+                    
+                    const diagList = [...(data.diagnosis || []), ...(data.otherDiagnoses || [])];
+                    document.getElementById('p-diagnosis').innerText = diagList.join(', ') || '-';
+                    
+                    const medsHTML = (data.medicines || []).map(m => `<div><strong>${m.name}</strong> - ${m.instruction} ${m.days ? `(${m.days} days)` : ''}</div>`).join('');
+                    document.getElementById('p-medicines').innerHTML = medsHTML || '-';
+                    
+                    document.getElementById('p-advice').innerText = data.advice || '-';
+                    document.getElementById('p-pathological-tests').innerText = data.pathologicalTests?.join(', ') || '-';
+                    
+                    // Date Logic for Review
+                    const reviewDays = parseInt(data.reviewAfter) || 7;
+                    const reviewDate = new Date(); reviewDate.setDate(reviewDate.getDate() + reviewDays);
+                    document.getElementById('p-footer-note').innerText = `Review Date: ${reviewDate.toLocaleDateString('en-GB')}`;
+
+                    // Print
+                    appScreen.classList.add('hidden');
+                    document.getElementById('print-output').classList.remove('hidden');
+                    window.print();
+                    
+                    // Cleanup
+                    document.getElementById('print-output').classList.add('hidden');
+                    appScreen.classList.remove('hidden');
+                    resetForm();
+
+                } catch (e) { console.error(e); alert("Error saving/printing"); }
+            };
+
+            holdButton.onclick = async () => {
+                const data = getFormData();
+                if(!data.name) return alert("Name required");
+                try {
+                    await addDoc(collection(db, "on_hold_patients"), data);
+                    if(currentPatientId && currentPatientOriginalCollection === 'patients') await deleteDoc(doc(db, "patients", currentPatientId));
+                    alert("On Hold");
+                    resetForm();
+                } catch(e) { console.error(e); }
+            };
+
+            const getFormData = () => {
+                const getChecks = (id) => Array.from(document.querySelectorAll(`#${id} input:checked`)).map(c => c.value);
+                return {
+                    name: patientNameInput.value,
+                    age: patientAgeInput.value,
+                    sex: patientSexInput.value,
+                    patientId: patientIdInput.value,
+                    phone: patientPhoneInput.value,
+                    address: patientAddressInput.value,
+                    date: document.getElementById('reportDate').value,
+                    complaints: getChecks('complaints-container'),
+                    history: getChecks('history-container'),
+                    diagnosis: getChecks('diagnosis-container'),
+                    otherDiagnoses: selectedOtherDiagnoses,
+                    vitals: {
+                        bp: document.getElementById('vital-bp').value,
+                        pulse: document.getElementById('vital-pulse').value,
+                        temp: document.getElementById('vital-temp').value,
+                        weight: document.getElementById('vital-weight').value,
+                        spo2: document.getElementById('vital-spo2').value,
+                        notes: document.getElementById('vital-notes').value
+                    },
+                    medicines: selectedMedicines,
+                    pathologicalTests: selectedPathologicalTests,
+                    advice: adviceValueSelect.value === 'Other' ? adviceOtherText.value : adviceValueSelect.value,
+                    reviewAfter: document.getElementById('reviewAfter').value
+                };
+            };
+            
+            // Re-bind utility buttons
+            document.getElementById('editButton').onclick = () => { document.getElementById('print-output').classList.add('hidden'); appScreen.classList.remove('hidden'); };
+            document.getElementById('reprintButton').onclick = () => window.print();
+            document.getElementById('newPatientBtn').onclick = () => { resetForm(); currentPatientId=null; mainFormSections.classList.remove('hidden'); };
+            
+            // Delete & Collection Modal logic (simplified for brevity, reused from existing patterns)
+            const promptForDelete = (id, col) => { patientToDelete = {id, collection: col}; document.getElementById('delete-confirm-modal').classList.remove('hidden'); };
+            document.getElementById('confirm-delete-button').onclick = async () => {
+                if(patientToDelete.id) { await deleteDoc(doc(db, patientToDelete.collection, patientToDelete.id)); document.getElementById('delete-confirm-modal').classList.add('hidden'); if(patientToDelete.id === currentPatientId) resetForm(); }
+            };
+            document.getElementById('cancel-delete-button').onclick = () => document.getElementById('delete-confirm-modal').classList.add('hidden');
+            
+             // Collection Modal Logic
+            const showCollection = async (date) => {
+                const start = new Date(date); start.setHours(0,0,0,0);
+                const end = new Date(date); end.setHours(23,59,59,999);
+                const q = query(collection(db, "checked_out_patients"), where("checkedOutAt", ">=", start), where("checkedOutAt", "<=", end));
+                const snap = await getDocs(q);
+                let total = 0; snap.forEach(d => total += Number(d.data().fee || 250)); // Default 250 if missing
+                document.getElementById('collection-total').innerText = total;
+                document.getElementById('collection-options-modal').classList.add('hidden');
+                document.getElementById('collection-modal').classList.remove('hidden');
+            };
+            document.getElementById('show-collection-button').onclick = () => document.getElementById('collection-options-modal').classList.remove('hidden');
+            document.getElementById('show-today-collection-btn').onclick = () => showCollection(new Date());
+            document.getElementById('show-specific-date-collection-btn').onclick = () => showCollection(new Date(document.getElementById('collection-date-picker').value));
+            document.getElementById('close-collection-options-modal').onclick = () => document.getElementById('collection-options-modal').classList.add('hidden');
+            document.getElementById('close-collection-modal').onclick = () => document.getElementById('collection-modal').classList.add('hidden');
+            document.getElementById('view-repeat-patients-button').onclick = () => document.getElementById('repeat-patients-modal').classList.remove('hidden');
+            document.getElementById('close-repeat-patients-modal').onclick = () => document.getElementById('repeat-patients-modal').classList.add('hidden');
+            
+             // Repeat Search
+            const searchRepeat = async () => {
+                const term = document.getElementById('repeat-patient-search').value.toLowerCase();
+                if(!term) return;
+                const snap = await getDocs(collection(db, "checked_out_patients"));
+                const list = document.getElementById('repeat-patients-list'); list.innerHTML = '';
+                snap.forEach(d => {
+                    const data = d.data();
+                    if(data.name.toLowerCase().includes(term) || (data.phone+'').includes(term)) {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 border-b flex justify-between';
+                        div.innerHTML = `<span>${data.name}</span> <button class="bg-green-500 text-white px-2 rounded">+</button>`;
+                        div.querySelector('button').onclick = () => { resetForm(); populateForm(data); document.getElementById('repeat-patients-modal').classList.add('hidden'); mainFormSections.classList.remove('hidden'); };
+                        list.appendChild(div);
+                    }
+                });
+            };
+            document.getElementById('search-repeat-patient-button').onclick = searchRepeat;
+        });
+    </script>
+</body>
+</html>
