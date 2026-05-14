@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Your Hospital</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom styles for modals and toast */
+        #confirmation-modal,
+        #patient-detail-modal,
+        #custom-collection-modal {
+            transition: opacity 0.3s ease;
+        }
+
+        #toast-notification {
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        }
+
+        .sortable {
+            cursor: pointer;
+        }
+
+        .sortable:hover {
+            color: #4f46e5;
+            /* indigo-600 */
+        }
+
+        .sort-icon {
+            opacity: 0.5;
+            margin-left: 4px;
+        }
+
+        .sortable.active .sort-icon {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Toast Notification -->
+    <div id="toast-notification"
+        class="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transform translate-x-full opacity-0">
+        <p id="toast-message"></p>
+    </div>
+
+
+
+    <!-- Main Admin Panel -->
+    <div id="admin-panel">
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Your Hospital</h1>
+                    <p class="text-sm text-indigo-600">Admin Dashboard</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="salary.html"
+                        class="py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Manage
+                        Expenses</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="flex justify-center items-center py-10">
+                <div class="loader"></div>
+                <p class="ml-4 text-gray-600">Loading patient data...</p>
+            </div>
+
+            <!-- Stats and Filters -->
+            <div id="dashboard-content" class="hidden">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
+                    <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+                        <p class="text-sm font-medium text-gray-500 truncate">Patients Today</p>
+                        <p id="today-patients" class="mt-1 text-3xl font-semibold text-gray-900">0</p>
+                    </div>
+                    <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+                        <p class="text-sm font-medium text-gray-500 truncate">Fees Today</p>
+                        <p id="today-fees" class="mt-1 text-3xl font-semibold text-gray-900">₹0</p>
+                    </div>
+                    <div
+                        class="bg-white overflow-hidden shadow rounded-lg p-5 flex flex-col items-center justify-center">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">View Custom Collection</h3>
+                        <button id="show-collection-modal-btn"
+                            class="w-full py-2 px-4 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Show
+                            Options</button>
+                    </div>
+                </div>
+
+                <!-- Filters and Actions -->
+                <div class="bg-white p-4 rounded-lg shadow mb-6">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Filters & Reports</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <input type="text" id="search-patient" placeholder="Search by name..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <input type="text" id="filter-address" placeholder="Filter by address..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <select id="filter-sex" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="">All Genders</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="number" id="filter-age" placeholder="Filter by age..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Filter by Date</label>
+                            <div class="flex items-center space-x-4 mt-1">
+                                <div class="flex items-center">
+                                    <input id="date-filter-range" name="date-filter-type" type="radio" checked
+                                        class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="date-filter-range" class="ml-2 block text-sm text-gray-900">Date
+                                        Range</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="date-filter-specific" name="date-filter-type" type="radio"
+                                        class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="date-filter-specific" class="ml-2 block text-sm text-gray-900">Specific
+                                        Date</label>
+                                </div>
+                            </div>
+                            <div id="date-range-picker" class="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                    <label for="start-date" class="sr-only">Start Date</label>
+                                    <input type="date" id="start-date"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                </div>
+                                <div>
+                                    <label for="end-date" class="sr-only">End Date</label>
+                                    <input type="date" id="end-date"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                </div>
+                            </div>
+                            <div id="specific-date-picker" class="mt-2 hidden">
+                                <label for="specific-date" class="sr-only">Specific Date</label>
+                                <input type="date" id="specific-date"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+                        <div class="flex items-end space-x-2">
+                            <button id="quick-filter-today"
+                                class="flex-1 py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">Today</button>
+                            <button id="quick-filter-week"
+                                class="flex-1 py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">This
+                                Week</button>
+                            <button id="quick-filter-month"
+                                class="flex-1 py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">This
+                                Month</button>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <div>
+                            <button id="apply-filters"
+                                class="py-2 px-4 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 mr-2">Apply
+                                Filters</button>
+                            <button id="reset-filters"
+                                class="py-2 px-4 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700">Reset
+                                Filters</button>
+                        </div>
+                        <button id="export-csv"
+                            class="py-2 px-4 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Export
+                            to CSV</button>
+                    </div>
+                </div>
+
+                <!-- Patient Data Table -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Showing <span id="patient-count">0</span> patients.</p>
+                            <button id="view-duplicates-btn"
+                                class="mt-2 py-1 px-3 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700">View
+                                Duplicates</button>
+                        </div>
+                        <button id="delete-selected-btn"
+                            class="py-2 px-4 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed"
+                            disabled>Delete Selected</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left">
+                                        <input type="checkbox" id="select-all-checkbox"
+                                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                                    </th>
+                                    <th class="sortable px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                        data-sort="name">Name <span class="sort-icon"></span></th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Age/Sex</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Address</th>
+                                    <th class="sortable px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                        data-sort="checkedOutAt">Checkout Date <span class="sort-icon"></span></th>
+                                    <th class="sortable px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                        data-sort="fee">Fee <span class="sort-icon"></span></th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Surgery Fee</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patient-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Rows will be inserted here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-auto">
+            <h3 class="text-lg font-medium text-gray-900" id="modal-title">Confirm Action</h3>
+            <div class="mt-2">
+                <p class="text-sm text-gray-500" id="modal-message">Are you sure you want to proceed?</p>
+            </div>
+            <div id="modal-error" class="mt-2 text-sm text-red-600 hidden"></div>
+            <div class="mt-4 flex justify-end space-x-2">
+                <button id="modal-cancel-btn"
+                    class="py-2 px-4 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="modal-confirm-btn"
+                    class="py-2 px-4 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Confirm
+                    Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Detail Modal -->
+    <div id="patient-detail-modal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl mx-auto max-h-full overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Patient Details</h3>
+                <button id="detail-modal-close-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div id="patient-detail-content" class="text-sm">
+                <!-- Details will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Collection Modal -->
+    <div id="custom-collection-modal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-auto">
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h3 class="text-xl font-bold text-gray-900">View Collection Data</h3>
+                <button id="collection-modal-close-btn"
+                    class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-md font-medium text-gray-800 mb-2">Quick Ranges</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="collection-last-week"
+                            class="py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">Last
+                            7 Days</button>
+                        <button id="collection-last-month"
+                            class="py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">Last
+                            30 Days</button>
+                        <button id="collection-lifetime"
+                            class="py-2 px-4 text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200">Lifetime</button>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t">
+                    <h4 class="text-md font-medium text-gray-800 mb-2">Custom Date Range</h4>
+                    <div class="grid grid-cols-2 gap-2 items-center">
+                        <input type="date" id="collection-start-date"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <input type="date" id="collection-end-date"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <button id="collection-custom-range-btn"
+                        class="w-full mt-2 py-2 px-4 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Show
+                        Custom Range</button>
+                </div>
+
+                <div id="collection-results" class="mt-4 p-4 bg-gray-100 rounded-lg hidden text-center">
+                    <p class="text-lg"><strong>Patients:</strong> <span id="collection-patient-count"
+                            class="font-bold text-indigo-600">0</span></p>
+                    <p class="text-lg"><strong>Total Fees:</strong> <span id="collection-total-fees"
+                            class="font-bold text-green-600">₹0</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, getDoc, setDoc, query, where, getDocs, Timestamp, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBeh9jhQpuohMxYe5bNRXgFrKMQlZjKg7U",
+            authDomain: "ehr-987e7.firebaseapp.com",
+            projectId: "ehr-987e7",
+            storageBucket: "ehr-987e7.firebasestorage.app",
+            messagingSenderId: "1050686164006",
+            appId: "1:1050686164006:web:98d7ded90368f7e828eae7"
+        };
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        signInAnonymously(auth).catch((error) => {
+            console.error("Anonymous authentication failed:", error);
+            if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
+                alert("Setup Required: Enable 'Anonymous' Sign-in in Firebase Console");
+            }
+        });
+
+        // DOM Elements
+        const toastNotification = document.getElementById('toast-notification');
+        const toastMessage = document.getElementById('toast-message');
+        const adminPanel = document.getElementById('admin-panel');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const dashboardContent = document.getElementById('dashboard-content');
+
+        // Stat elements
+        const todayPatientsEl = document.getElementById('today-patients');
+        const todayFeesEl = document.getElementById('today-fees');
+
+        // Filter elements
+        const searchPatientInput = document.getElementById('search-patient');
+        const filterAddressInput = document.getElementById('filter-address');
+        const filterSexSelect = document.getElementById('filter-sex');
+        const filterAgeInput = document.getElementById('filter-age');
+        const dateFilterRangeRadio = document.getElementById('date-filter-range');
+        const dateFilterSpecificRadio = document.getElementById('date-filter-specific');
+        const dateRangePickerDiv = document.getElementById('date-range-picker');
+        const specificDatePickerDiv = document.getElementById('specific-date-picker');
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        const specificDateInput = document.getElementById('specific-date');
+        const quickFilterTodayBtn = document.getElementById('quick-filter-today');
+        const quickFilterWeekBtn = document.getElementById('quick-filter-week');
+        const quickFilterMonthBtn = document.getElementById('quick-filter-month');
+        const applyFiltersButton = document.getElementById('apply-filters');
+        const resetFiltersButton = document.getElementById('reset-filters');
+        const exportCsvButton = document.getElementById('export-csv');
+
+        // Table and Action elements
+        const patientTableBody = document.getElementById('patient-table-body');
+        const patientCountSpan = document.getElementById('patient-count');
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+        const tableHeaders = document.querySelectorAll('th.sortable');
+        const viewDuplicatesBtn = document.getElementById('view-duplicates-btn');
+
+        // Modal Elements
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalError = document.getElementById('modal-error');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const patientDetailModal = document.getElementById('patient-detail-modal');
+        const patientDetailContent = document.getElementById('patient-detail-content');
+        const detailModalCloseBtn = document.getElementById('detail-modal-close-btn');
+
+        // Custom Collection Modal Elements
+        const showCollectionModalBtn = document.getElementById('show-collection-modal-btn');
+        const customCollectionModal = document.getElementById('custom-collection-modal');
+        const collectionModalCloseBtn = document.getElementById('collection-modal-close-btn');
+        const collectionLastWeekBtn = document.getElementById('collection-last-week');
+        const collectionLastMonthBtn = document.getElementById('collection-last-month');
+        const collectionLifetimeBtn = document.getElementById('collection-lifetime');
+        const collectionStartDateInput = document.getElementById('collection-start-date');
+        const collectionEndDateInput = document.getElementById('collection-end-date');
+        const collectionCustomRangeBtn = document.getElementById('collection-custom-range-btn');
+        const collectionResultsDiv = document.getElementById('collection-results');
+        const collectionPatientCountSpan = document.getElementById('collection-patient-count');
+        const collectionTotalFeesSpan = document.getElementById('collection-total-fees');
+
+        let allPatients = [];
+        let filteredPatients = [];
+        let selectedPatientIds = new Set();
+        let sortConfig = { key: 'checkedOutAt', direction: 'desc' };
+        let isInitialLoad = true;
+
+
+        // --- UI ENHANCEMENTS ---
+        function showToast(message, type = 'success') {
+            toastMessage.textContent = message;
+            toastNotification.className = `fixed top-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg transform transition-transform duration-500 ease-in-out ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} translate-x-0 opacity-100`;
+            setTimeout(() => {
+                toastNotification.style.transform = 'translateX(100%)';
+                toastNotification.style.opacity = '0';
+            }, 3000);
+        }
+
+        // --- INITIALIZE DATA ---
+        document.addEventListener("DOMContentLoaded", () => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    fetchPatientData();
+                }
+            });
+        });
+
+        // --- DATA FETCHING & PROCESSING ---
+        function fetchPatientData() {
+            // Only listen to patients from last 90 days to minimize reads
+            const ninetyDaysAgo = new Date();
+            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+            const q = query(
+                collection(db, 'checked_out_patients'),
+                where('checkedOutAt', '>=', Timestamp.fromDate(ninetyDaysAgo)),
+                orderBy('checkedOutAt', 'desc')
+            );
+            onSnapshot(q, (querySnapshot) => {
+                allPatients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                if (isInitialLoad) {
+                    loadingIndicator.classList.add('hidden');
+                    dashboardContent.classList.remove('hidden');
+                    const today = new Date().toISOString().split('T')[0];
+                    startDateInput.value = today;
+                    endDateInput.value = today;
+                    isInitialLoad = false;
+                }
+
+                calculateAndDisplayStats();
+                applyFiltersAndRender();
+            }, (error) => {
+                console.error("Error fetching patient data: ", error);
+                loadingIndicator.innerHTML = '<p class="text-red-500">Failed to load data.</p>';
+            });
+        }
+
+        function calculateAndDisplayStats() {
+            const today = new Date().toDateString();
+            const todayPatientsList = allPatients.filter(p => {
+                const checkoutTimestamp = p.checkedOutAt;
+                if (!checkoutTimestamp) return false;
+                const checkoutDate = checkoutTimestamp.toDate ? checkoutTimestamp.toDate() : new Date(checkoutTimestamp);
+                return checkoutDate.toDateString() === today;
+            });
+            const todayFees = todayPatientsList.reduce((sum, p) => sum + (parseFloat(p.fee) || 0), 0);
+            todayPatientsEl.textContent = todayPatientsList.length;
+            todayFeesEl.textContent = `₹${todayFees.toLocaleString('en-IN')}`;
+        }
+
+
+
+        function applyFiltersAndRender() {
+            const searchTerm = searchPatientInput.value.toLowerCase();
+            const addressTerm = filterAddressInput.value.toLowerCase();
+            const sexTerm = filterSexSelect.value;
+            const ageTerm = filterAgeInput.value;
+
+            let startDate = null;
+            let endDate = null;
+
+            if (dateFilterSpecificRadio.checked) {
+                if (specificDateInput.value) {
+                    startDate = new Date(specificDateInput.value);
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate = new Date(specificDateInput.value);
+                    endDate.setHours(23, 59, 59, 999);
+                }
+            } else { // Date Range is selected
+                if (startDateInput.value) {
+                    startDate = new Date(startDateInput.value);
+                    startDate.setHours(0, 0, 0, 0);
+                }
+                if (endDateInput.value) {
+                    endDate = new Date(endDateInput.value);
+                    endDate.setHours(23, 59, 59, 999);
+                }
+            }
+
+
+            filteredPatients = allPatients.filter(p => {
+                const checkoutTimestamp = p.checkedOutAt;
+                if (!checkoutTimestamp) return false;
+                const checkoutDate = checkoutTimestamp.toDate ? checkoutTimestamp.toDate() : new Date(checkoutTimestamp);
+                return (!searchTerm || (p.name && p.name.toLowerCase().includes(searchTerm))) &&
+                    (!addressTerm || (p.address && p.address.toLowerCase().includes(addressTerm))) &&
+                    (!sexTerm || p.sex === sexTerm) &&
+                    (!ageTerm || (p.age && p.age.toString() === ageTerm)) &&
+                    (!startDate || checkoutDate >= startDate) &&
+                    (!endDate || checkoutDate <= endDate);
+            });
+
+            filteredPatients.sort((a, b) => {
+                const aVal = a[sortConfig.key];
+                const bVal = b[sortConfig.key];
+                let compare = 0;
+                if (sortConfig.key === 'checkedOutAt') {
+                    const dateA = aVal?.toDate ? aVal.toDate() : new Date(aVal);
+                    const dateB = bVal?.toDate ? bVal.toDate() : new Date(bVal);
+                    compare = dateA - dateB;
+                } else if (sortConfig.key === 'fee') {
+                    compare = (parseFloat(aVal) || 0) - (parseFloat(bVal) || 0);
+                } else {
+                    compare = (aVal || '').localeCompare(bVal || '');
+                }
+                return sortConfig.direction === 'asc' ? compare : -compare;
+            });
+
+            renderTable();
+            updateSortIcons();
+        }
+
+        function renderTable() {
+            patientTableBody.innerHTML = '';
+            patientCountSpan.textContent = filteredPatients.length;
+            if (filteredPatients.length === 0) {
+                patientTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-gray-500">No patients found.</td></tr>`;
+                updateBulkDeleteButtonState();
+                return;
+            }
+            filteredPatients.forEach(p => {
+                const checkoutTimestamp = p.checkedOutAt;
+                const checkoutDate = checkoutTimestamp?.toDate ? checkoutTimestamp.toDate().toLocaleDateString('en-IN') : 'N/A';
+                const fee = !isNaN(parseFloat(p.fee)) ? `₹${parseFloat(p.fee).toLocaleString('en-IN')}` : 'N/A';
+                const surgeryFeeDisplay = p.surgeryFee ? `₹${parseFloat(p.surgeryFee).toLocaleString('en-IN')}` : '—';
+
+                const row = document.createElement('tr');
+                row.className = 'cursor-pointer hover:bg-gray-50';
+                row.dataset.id = p.id;
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 row-checkbox pointer-events-none" data-id="${p.id}">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${p.name || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.age || 'N/A'} / ${p.sex || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.address || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${checkoutDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${fee}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${p.surgeryFee ? 'font-medium text-amber-700' : 'text-gray-400'}">${surgeryFeeDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 view-btn" data-id="${p.id}">View</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn ml-4" data-id="${p.id}" data-name="${p.name || 'this patient'}">Delete</button>
+                    </td>
+                `;
+                patientTableBody.appendChild(row);
+            });
+            updateBulkDeleteButtonState();
+        }
+
+        function updateSortIcons() {
+            tableHeaders.forEach(th => {
+                const icon = th.querySelector('.sort-icon');
+                if (th.dataset.sort === sortConfig.key) {
+                    th.classList.add('active');
+                    icon.innerHTML = sortConfig.direction === 'asc' ? '&#9650;' : '&#9660;';
+                } else {
+                    th.classList.remove('active');
+                    icon.innerHTML = '';
+                }
+            });
+        }
+
+        // --- DYNAMIC DATE FILTER UI ---
+        function toggleDateFilterUI() {
+            if (dateFilterSpecificRadio.checked) {
+                dateRangePickerDiv.classList.add('hidden');
+                specificDatePickerDiv.classList.remove('hidden');
+            } else {
+                dateRangePickerDiv.classList.remove('hidden');
+                specificDatePickerDiv.classList.add('hidden');
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        dateFilterRangeRadio.addEventListener('change', toggleDateFilterUI);
+        dateFilterSpecificRadio.addEventListener('change', toggleDateFilterUI);
+
+        applyFiltersButton.addEventListener('click', applyFiltersAndRender);
+        resetFiltersButton.addEventListener('click', () => {
+            searchPatientInput.value = '';
+            filterAddressInput.value = '';
+            filterSexSelect.value = '';
+            filterAgeInput.value = '';
+            const today = new Date().toISOString().split('T')[0];
+            startDateInput.value = today;
+            endDateInput.value = today;
+            specificDateInput.value = '';
+            dateFilterRangeRadio.checked = true;
+            toggleDateFilterUI();
+            applyFiltersAndRender();
+        });
+        exportCsvButton.addEventListener('click', exportToCsv);
+
+        quickFilterTodayBtn.addEventListener('click', () => {
+            dateFilterRangeRadio.checked = true;
+            toggleDateFilterUI();
+            const today = new Date().toISOString().split('T')[0];
+            startDateInput.value = today;
+            endDateInput.value = today;
+            applyFiltersAndRender();
+        });
+        quickFilterWeekBtn.addEventListener('click', () => {
+            dateFilterRangeRadio.checked = true;
+            toggleDateFilterUI();
+            const today = new Date();
+            const firstDayOfWeek = new Date(new Date().setDate(today.getDate() - today.getDay()));
+            endDateInput.value = today.toISOString().split('T')[0];
+            startDateInput.value = firstDayOfWeek.toISOString().split('T')[0];
+            applyFiltersAndRender();
+        });
+        quickFilterMonthBtn.addEventListener('click', () => {
+            dateFilterRangeRadio.checked = true;
+            toggleDateFilterUI();
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDateInput.value = today.toISOString().split('T')[0];
+            startDateInput.value = firstDayOfMonth.toISOString().split('T')[0];
+            applyFiltersAndRender();
+        });
+
+        tableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const key = header.dataset.sort;
+                if (sortConfig.key === key) {
+                    sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortConfig.key = key;
+                    sortConfig.direction = 'asc';
+                }
+                applyFiltersAndRender();
+            });
+        });
+
+        viewDuplicatesBtn.addEventListener('click', showDuplicatePatients);
+
+        // --- DELETION & SELECTION LOGIC ---
+        patientTableBody.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('delete-btn')) {
+                e.stopPropagation();
+                handleSingleDelete(target.dataset.id, target.dataset.name);
+            } else if (target.classList.contains('view-btn')) {
+                e.stopPropagation();
+                showPatientDetail(target.dataset.id);
+            } else {
+                const row = target.closest('tr');
+                if (row) {
+                    const checkbox = row.querySelector('.row-checkbox');
+                    const patientId = row.dataset.id;
+                    checkbox.checked = !checkbox.checked;
+                    if (checkbox.checked) {
+                        selectedPatientIds.add(patientId);
+                    } else {
+                        selectedPatientIds.delete(patientId);
+                    }
+                    updateBulkDeleteButtonState();
+                }
+            }
+        });
+
+        selectAllCheckbox.addEventListener('change', (e) => {
+            const checkboxes = patientTableBody.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+                const patientId = checkbox.dataset.id;
+                if (e.target.checked) {
+                    selectedPatientIds.add(patientId);
+                } else {
+                    selectedPatientIds.delete(patientId);
+                }
+            });
+            updateBulkDeleteButtonState();
+        });
+
+        deleteSelectedBtn.addEventListener('click', handleBulkDelete);
+
+        function updateBulkDeleteButtonState() {
+            deleteSelectedBtn.disabled = selectedPatientIds.size === 0;
+        }
+
+        async function handleSingleDelete(patientId, patientName) {
+            showConfirmationModal(
+                `Are you sure you want to permanently delete the record for ${patientName}?`,
+                async () => {
+                    await deleteDoc(doc(db, 'checked_out_patients', patientId));
+                    showToast(`Deleted record for ${patientName}.`);
+                }
+            );
+        }
+
+        async function handleBulkDelete() {
+            const count = selectedPatientIds.size;
+            if (count === 0) return;
+            showConfirmationModal(
+                `Are you sure you want to permanently delete the ${count} selected patient records?`,
+                async () => {
+                    const batch = writeBatch(db);
+                    selectedPatientIds.forEach(id => batch.delete(doc(db, 'checked_out_patients', id)));
+                    await batch.commit();
+                    showToast(`Deleted ${count} records.`);
+                    selectedPatientIds.clear();
+                    selectAllCheckbox.checked = false;
+                }
+            );
+        }
+
+        function showConfirmationModal(message, onConfirm) {
+            modalMessage.textContent = message;
+            modalError.classList.add('hidden');
+            confirmationModal.classList.remove('hidden');
+            const confirmHandler = async () => {
+                modalConfirmBtn.textContent = 'Deleting...';
+                modalConfirmBtn.disabled = true;
+                modalCancelBtn.disabled = true;
+                try {
+                    await onConfirm();
+                    hideModal();
+                } catch (error) {
+                    console.error("DELETION FAILED:", error);
+                    modalError.textContent = `Error: ${error.message}`;
+                    modalError.classList.remove('hidden');
+                } finally {
+                    modalConfirmBtn.textContent = 'Confirm Delete';
+                    modalConfirmBtn.disabled = false;
+                    modalCancelBtn.disabled = false;
+                }
+            };
+            const cancelHandler = () => hideModal();
+            modalConfirmBtn.onclick = confirmHandler;
+            modalCancelBtn.onclick = cancelHandler;
+            function hideModal() {
+                confirmationModal.classList.add('hidden');
+                modalConfirmBtn.onclick = null;
+                modalCancelBtn.onclick = null;
+            }
+        }
+
+        // --- CUSTOM COLLECTION MODAL LOGIC ---
+        showCollectionModalBtn.addEventListener('click', () => {
+            customCollectionModal.classList.remove('hidden');
+            collectionResultsDiv.classList.add('hidden');
+        });
+
+        collectionModalCloseBtn.addEventListener('click', () => {
+            customCollectionModal.classList.add('hidden');
+        });
+
+        function calculateCustomCollection(startDate, endDate) {
+            let collectionPatients = allPatients;
+            if (startDate && endDate) {
+                collectionPatients = allPatients.filter(p => {
+                    const checkoutTimestamp = p.checkedOutAt;
+                    if (!checkoutTimestamp) return false;
+                    const checkoutDate = checkoutTimestamp.toDate ? checkoutTimestamp.toDate() : new Date(checkoutTimestamp);
+                    return checkoutDate >= startDate && checkoutDate <= endDate;
+                });
+            }
+
+            const totalFees = collectionPatients.reduce((sum, p) => sum + (parseFloat(p.fee) || 0), 0);
+            collectionPatientCountSpan.textContent = collectionPatients.length;
+            collectionTotalFeesSpan.textContent = `₹${totalFees.toLocaleString('en-IN')}`;
+            collectionResultsDiv.classList.remove('hidden');
+        }
+
+        collectionLastWeekBtn.addEventListener('click', () => {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 6);
+            startDate.setHours(0, 0, 0, 0);
+            calculateCustomCollection(startDate, endDate);
+        });
+
+        collectionLastMonthBtn.addEventListener('click', () => {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 29);
+            startDate.setHours(0, 0, 0, 0);
+            calculateCustomCollection(startDate, endDate);
+        });
+
+        collectionLifetimeBtn.addEventListener('click', () => {
+            calculateCustomCollection(null, null); // null indicates all time
+        });
+
+        collectionCustomRangeBtn.addEventListener('click', () => {
+            const startDateStr = collectionStartDateInput.value;
+            const endDateStr = collectionEndDateInput.value;
+            if (startDateStr && endDateStr) {
+                const startDate = new Date(startDateStr);
+                startDate.setHours(0, 0, 0, 0);
+                const endDate = new Date(endDateStr);
+                endDate.setHours(23, 59, 59, 999);
+                calculateCustomCollection(startDate, endDate);
+            } else {
+                showToast("Please select both a start and end date.", "error");
+            }
+        });
+
+
+        // --- DUPLICATE FINDER ---
+        function showDuplicatePatients() {
+            const patientSignatureCounts = new Map();
+            allPatients.forEach(p => {
+                const name = (p.name || '').trim().toLowerCase();
+                const age = p.age || 'unknown';
+
+                let checkoutDateStr = 'unknown-date';
+                if (p.checkedOutAt?.toDate) {
+                    checkoutDateStr = p.checkedOutAt.toDate().toISOString().split('T')[0];
+                } else if (p.checkedOutAt) {
+                    checkoutDateStr = new Date(p.checkedOutAt).toISOString().split('T')[0];
+                }
+
+                if (name) {
+                    const signature = `${name}-${age}-${checkoutDateStr}`;
+                    patientSignatureCounts.set(signature, (patientSignatureCounts.get(signature) || 0) + 1);
+                }
+            });
+
+            const duplicateSignatures = new Set();
+            for (const [signature, count] of patientSignatureCounts.entries()) {
+                if (count > 1) {
+                    duplicateSignatures.add(signature);
+                }
+            }
+
+            if (duplicateSignatures.size === 0) {
+                showToast("No duplicates found (matching name, age, & date).", "success");
+                return;
+            }
+
+            filteredPatients = allPatients.filter(p => {
+                const name = (p.name || '').trim().toLowerCase();
+                const age = p.age || 'unknown';
+                let checkoutDateStr = 'unknown-date';
+                if (p.checkedOutAt?.toDate) {
+                    checkoutDateStr = p.checkedOutAt.toDate().toISOString().split('T')[0];
+                } else if (p.checkedOutAt) {
+                    checkoutDateStr = new Date(p.checkedOutAt).toISOString().split('T')[0];
+                }
+                const signature = `${name}-${age}-${checkoutDateStr}`;
+                return duplicateSignatures.has(signature);
+            });
+
+            sortConfig = { key: 'name', direction: 'asc' };
+
+            filteredPatients.sort((a, b) => {
+                const nameCompare = (a.name || '').localeCompare(b.name || '');
+                if (nameCompare !== 0) return nameCompare;
+                const dateA = a.checkedOutAt?.toDate ? a.checkedOutAt.toDate() : new Date(a.checkedOutAt);
+                const dateB = b.checkedOutAt?.toDate ? b.checkedOutAt.toDate() : new Date(b.checkedOutAt);
+                return dateA - dateB;
+            });
+            renderTable();
+            updateSortIcons();
+
+            patientCountSpan.textContent = `${filteredPatients.length} (displaying only duplicates)`;
+            showToast(`Found ${duplicateSignatures.size} sets of duplicate records.`, 'success');
+        }
+
+        // --- PATIENT DETAIL MODAL ---
+        function showPatientDetail(patientId) {
+            const patient = allPatients.find(p => p.id === patientId);
+            if (!patient) return;
+
+            let content = `<div class="space-y-4">`;
+
+            // Personal Details
+            content += `<div class="grid grid-cols-2 gap-x-8 gap-y-2">`;
+            content += `<div><strong>Name:</strong><p>${patient.name || 'N/A'}</p></div>`;
+            content += `<div><strong>ID:</strong><p>${patient.patientId || 'N/A'}</p></div>`;
+            content += `<div><strong>Age / Sex:</strong><p>${patient.age || 'N/A'} / ${patient.sex || 'N/A'}</p></div>`;
+            content += `<div><strong>Phone:</strong><p>${patient.phone || 'N/A'}</p></div>`;
+            content += `<div class="col-span-2"><strong>Address:</strong><p>${patient.address || 'N/A'}</p></div>`;
+            content += `</div>`;
+
+            // Rx: Medicines & Advice
+            if (patient.medicines?.length > 0 || patient.advice) {
+                content += `<div class="border-t pt-3 mt-3"><strong>Rx (Prescription):</strong>`;
+                if (patient.medicines?.length > 0) {
+                    patient.medicines.forEach(med => {
+                        content += `<p class="mt-1 ml-4">&bull; <strong>${med.name}</strong> - ${med.instruction || ''} (${med.days || 'N/A'} days)</p>`;
+                    });
+                }
+                if (patient.advice) {
+                    content += `<p class="mt-2 ml-4"><strong>Advice:</strong> ${patient.advice}</p>`;
+                }
+                content += `</div>`;
+            }
+
+            // Review After section
+            if (patient.reviewAfter) {
+                content += `<div class="border-t pt-3 mt-3"><strong>Follow-up:</strong>`;
+                content += `<p>Review After: <strong>${patient.reviewAfter} days</strong></p>`;
+                content += `</div>`;
+            }
+
+
+            content += `</div>`;
+            patientDetailContent.innerHTML = content;
+            patientDetailModal.classList.remove('hidden');
+        }
+        detailModalCloseBtn.addEventListener('click', () => patientDetailModal.classList.add('hidden'));
+
+        // --- EXPORT TO CSV ---
+        function exportToCsv() {
+            if (filteredPatients.length === 0) {
+                alert("No data to export!");
+                return;
+            }
+            const headers = ['Name', 'Age', 'Sex', 'Address', 'Checkout Date', 'Fee', 'Surgery Fee'];
+            const rows = filteredPatients.map(p => {
+                const checkoutTimestamp = p.checkedOutAt;
+                const checkoutDateISO = checkoutTimestamp?.toDate ? checkoutTimestamp.toDate().toISOString().split('T')[0] : 'N/A';
+                let surgeryFee = p.surgeryFee ? p.surgeryFee : '—';
+                return [
+                    `"${(p.name || '').replace(/"/g, '""')}"`,
+                    p.age || '',
+                    p.sex || '',
+                    `"${(p.address || '').replace(/"/g, '""')}"`,
+                    checkoutDateISO,
+                    p.fee || 0,
+                    surgeryFee
+                ];
+            });
+            let csvContent = "data:text/csv;charset=utf-8,"
+                + headers.join(",") + "\n"
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "patient_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    </script>
+</body>
+
+</html>
