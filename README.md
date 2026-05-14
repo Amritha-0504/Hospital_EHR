@@ -1,6 +1,7 @@
 # 🏥 Hospital Management System
 
-> A full-stack, role-based hospital management web application built as part of an **EPICS (Engineering Projects in Community Service)** initiative. Designed to streamline hospital operations — from patient registration to doctor consultations and salary management.
+> A full-stack, role-based hospital management web application built as part of an **EPICS (Engineering Projects in Community Service)** initiative. Designed to streamline hospital operations — from patient registration to doctor consultations and salary management. 
+> Working sample : https://hospital-ehr.netlify.app/
 
 ---
 
@@ -16,6 +17,7 @@
 - [Screenshots](#screenshots)
 - [Contributing](#contributing)
 - [License](#license)
+
 
 ---
 
